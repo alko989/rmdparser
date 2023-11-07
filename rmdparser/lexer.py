@@ -9,13 +9,13 @@ Inline formating
  - code(`print("Hello, World!")`)
  - links ([text](link))
  - images (![alt text](path/to/image))
- - footnote (^[I am a footnote])
+ - footnote (^[I am a footnote]) TODO
 Block-level elements
  - heading (### Heading level 3)
  - unordered list ( - list item 1)
  - ordered list ( 1. list item )
- - code (```Code block```)
- - block quote (> "First line
+ - code (```Code block```) TODO
+ - block quote (> "First line TODO
                   Second line"
                 > --- Mark Twain)
 Special tokens
@@ -24,7 +24,7 @@ Special tokens
 
 """
 
-
+import re
 from enum import Enum
 
 
@@ -56,13 +56,11 @@ class NewToken(object):
 
     def __init__(self, _type: Enum,
                  _literal: str = "", _line: int = 1) -> None:
-        """Make Token object string `value`, one of the class constants."""
         self.type = _type
         self.literal = _literal
         self.line = _line
 
     def __repr__(self):
-        """Print a token."""
         print(f"Type: {self.type}, line: {self.line}, literal: {self.literal}")
 
     def __str__(self):
@@ -84,6 +82,40 @@ def stripchars(s, chars):
         print(s[i])
         i += 1
     return s[i:]
+
+def inlineLexer(input: str) -> str:
+    """TODO: Make function to reduce repetition"""
+    # Italic
+    print(input)
+    input = re.sub(r'([\s][*]{1})([^*]+)([*]{1}[\s])',
+                   r' <span style="font-style: italic">\2</span> ',
+                   input)
+    # Bold
+    input = re.sub(r'([\s][*]{2})(.*)([*]{2}[\s])',
+                   r' <span style="font-weight: bold">\2</span> ',
+                   input)
+    # Superscript
+    input = re.sub(r'([\^]{1})(.*)([\^]{1})',
+                   r'<sup>\2</sup> ',
+                   input)
+    # Subscript
+    input = re.sub(r'([\~]{1})(.*)([\~]{1})',
+                   r'<sub>\2</sub>',
+                   input)
+    # Inline code
+    input = re.sub(r'([\`]{1})(.*)([\`]{1})',
+                   r'<code>\2</code>',
+                   input)
+    #Image
+    input = re.sub(r'([\!][\[]{1})(.*)([\]]{1})([\(]{1})(.*)([\)]{1})',
+                   r'<img src="\5" alt="\2" />',
+                   input)
+    #Link
+    input = re.sub(r'([\[]{1})(.*)([\]]{1})([\(]{1})(.*)([\)]{1})',
+                   r'<a href="\5">\2</a>',
+                   input)
+    return input
+
 
 
 class Lexer(object):
@@ -156,7 +188,8 @@ class Lexer(object):
         else:
             res = Token.TEXT
             lit = self.get_until_chars(offset=-1)
-
+        if res == Token.TEXT:
+            lit = inlineLexer(lit)
         return NewToken(res, lit.strip(), line)
 
     def peakahead(self, pos: int = 0):
@@ -167,10 +200,7 @@ class Lexer(object):
             return self.input[self.readPosition + pos]
 
     def get_until_chars(self, offset: int = 0, chars="\n", multiples=1):
-        """
-        Give me the rest of the letters until newline.
-        TODO: Cleanupy
-        """
+        """Give me the rest of the letters until newline. TODO: Cleanup."""
         self.readPosition += offset
         self.position += offset
         res = ""
