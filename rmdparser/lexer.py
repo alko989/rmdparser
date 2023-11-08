@@ -1,5 +1,5 @@
-"""
-Lexer for Rmarkdown files that use Pandoc's markdown flavour.
+r"""
+Lexer for Rmarkdown files that use the commonmark specification.
 
 Inline formating
  - italics (_text_ or *text*)
@@ -11,13 +11,18 @@ Inline formating
  - images (![alt text](path/to/image))
  - footnote (^[I am a footnote]) TODO
 Block-level elements
- - heading (### Heading level 3)
+ - heading (### Heading level 3) TODO: up to level 6
  - unordered list ( - list item 1)
  - ordered list ( 1. list item )
- - code (```Code block```) TODO
- - block quote (> "First line TODO
+ - code (```Code block```)
+ - block quote (> "First line
                   Second line"
-                > --- Mark Twain)
+                > --- Mark Twain) TODO
+ - math ($\psi(x) = \theta \lambda_t$)
+   These need to be added in the header to work
+   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+ - thematic break (---, ***, ___)
 Special tokens
  - EOF
  - newline
@@ -35,20 +40,14 @@ class Token(Enum):
     ILLEGAL = 1
     NEWLINE = 2
     TEXT = 3
-    ITALICS = 4
-    STRONG = 5
-    BLOCKQUOTE = 6
-    SUPERSCRIPT = 7
-    SUBSCRIPT = 8
-    ULIST = 9
-    OLIST = 10
-    LINK = 11
-    IMAGE = 12
-    CODE = 13
-    INLINECODE = 14
-    HEADER1 = 15
-    HEADER2 = 16
-    HEADER3 = 17
+    ULIST = 4
+    OLIST = 5
+    CODE = 6
+    HEADER1 = 7
+    HEADER2 = 8
+    HEADER3 = 9
+    BLOCKQUOTE = 10
+    THEMATIC_BREAK = 11
 
 
 class NewToken(object):
@@ -85,14 +84,14 @@ def stripchars(s, chars):
 
 def inlineLexer(input: str) -> str:
     """TODO: Make function to reduce repetition"""
-    # Italic
-    print(input)
-    input = re.sub(r'([\s][*]{1})([^*]+)([*]{1}[\s])',
-                   r' <span style="font-style: italic">\2</span> ',
-                   input)
+
     # Bold
-    input = re.sub(r'([\s][*]{2})(.*)([*]{2}[\s])',
-                   r' <span style="font-weight: bold">\2</span> ',
+    input = re.sub(r'([*]{2})(.*)([*]{2})',
+                   r'<span style="font-weight: bold">\2</span>',
+                   input)
+    # Italic
+    input = re.sub(r'([*]{1})([^*]+)([*]{1})',
+                   r'<span style="font-style: italic">\2</span>',
                    input)
     # Superscript
     input = re.sub(r'([\^]{1})(.*)([\^]{1})',
@@ -106,16 +105,19 @@ def inlineLexer(input: str) -> str:
     input = re.sub(r'([\`]{1})(.*)([\`]{1})',
                    r'<code>\2</code>',
                    input)
-    #Image
+    # Image
     input = re.sub(r'([\!][\[]{1})(.*)([\]]{1})([\(]{1})(.*)([\)]{1})',
                    r'<img src="\5" alt="\2" />',
                    input)
-    #Link
+    # Link
     input = re.sub(r'([\[]{1})(.*)([\]]{1})([\(]{1})(.*)([\)]{1})',
                    r'<a href="\5">\2</a>',
                    input)
+    # Math
+    input = re.sub(r'([\$]{1})(.*)([\$]{1})',
+                   r'<span class="math display">\[\2\]</span>',
+                   input)
     return input
-
 
 
 class Lexer(object):
@@ -188,9 +190,16 @@ class Lexer(object):
         else:
             res = Token.TEXT
             lit = self.get_until_chars(offset=-1)
-        if res == Token.TEXT:
+        if res != Token.CODE:
             lit = inlineLexer(lit)
         return NewToken(res, lit.strip(), line)
+
+    def parse(self):
+        toks = []
+        toks.append(self.nextToken())
+        while toks[len(toks) - 1].type != Token.EOF:
+            toks.append(self.nextToken())
+        return toks
 
     def peakahead(self, pos: int = 0):
         """Get a char ahead of readPosition if there is one."""

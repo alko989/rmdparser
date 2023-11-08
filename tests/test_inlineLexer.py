@@ -112,3 +112,20 @@ def test_link_img():
         assert tok.type == ex.type
         assert tok.literal == ex.literal
         assert tok.line == ex.line
+
+
+def test_edges():
+    input = "**This is bold** and this is *italic*"
+    expected = [
+        NewToken(Token.TEXT,
+        '<span style="font-weight: bold">This is bold</span> '
+                 'and this is <span style="font-style: italic">italic</span>', 1)
+    ]
+
+    lex = Lexer(input)
+    for i, ex in enumerate(expected):
+        tok = lex.nextToken()
+        print(f"is {tok.type} expected: {ex.type}")
+        assert tok.type == ex.type
+        assert tok.literal == ex.literal
+        assert tok.line == ex.line

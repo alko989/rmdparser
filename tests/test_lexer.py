@@ -215,10 +215,10 @@ def test_blockcode_with__inside__backticks():
         NewToken(Token.NEWLINE, "", 3),
         NewToken(Token.HEADER1, "Heading 1", 4)
     ]
-
     lex = Lexer(input)
+    toks = lex.parse()
     for i, ex in enumerate(expected):
-        tok = lex.nextToken()
+        tok = toks[i]
         print(tok)
         print(ex)
         assert tok.type == ex.type
